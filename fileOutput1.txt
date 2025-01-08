@@ -1,9 +1,0 @@
-> CREATE fileOutput1.txt;
-> Column: customer_id Type: INT
-> Column: customer_name Type: TEXT
-> Column: customer_city Type: TEXT
-> Column: customer_state Type: TEXT
-> Column: customer_country Type: TEXT
-> Column: customer_phone Type: TEXT
-> Column: customer_email Type: TEXT
-> Table 'customer' created with 7 columns.
