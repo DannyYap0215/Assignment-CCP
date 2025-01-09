@@ -1,3 +1,21 @@
+// *********************************************************
+// Program: Light_Mariadb_Interpreter.cpp
+// Course: CCP6114 Programming Fundamentals
+// Lecture Class: TC1L
+// Tutorial Class: TT1L
+// Trimester: 2430
+// Member_1: 242UC244KX | YAP CHI YI | YAP.CHI.YI@student.mmu.edu.my | 018-2694514
+// Member_2: ID | NAME | EMAIL | PHONE
+// Member_3: ID | NAME | EMAIL | PHONE
+// Member_4: ID | NAME | EMAIL | PHONE
+// *********************************************************
+// Task Distribution
+// Member_1: function: read_file ,get_output_filename ,write_to_file | Commands function: DATABASES, CREATE TABLE, TABLES, SELECT * FROM
+// Member_2: 
+// Member_3:
+// Member_4:
+// *********************************************************
+
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -34,16 +52,44 @@ int main() {
 void read_file(const string& filename) {
     ifstream file(filename);
     string output_filename = get_output_filename(filename);
-
+    
     if (file.is_open()) {
         string line;
+        string command_buffer;  // temporarly accumulate multiple line commands
+        bool inside_create_table = false;  // track multiple line commands
+
         while (getline(file, line)) {
             if (!line.empty()) {
-                processed_command_line_outputs.push_back("> " + line);
-                cout << "> " << line << endl;
+                if (inside_create_table){ // bassically if no command type are found ,">" will not be added
+                    processed_command_line_outputs.push_back(line);
+                    cout <<line << endl;
+                } else{ 
+                    processed_command_line_outputs.push_back("> " + line); 
+                    cout << "> " << line << endl;
+                }
             }
+
+            // Check if line contain CREATE TABLE command or INSERT INTO command
+            if (line.find("CREATE TABLE") == 0 || line.find("INSERT INTO") == 0) {
+                inside_create_table = true;
+                command_buffer = line;  // Start accumulating the command
+                continue;  // Skip to next if statement
+            }
+
+            // If theres multiple lines inside of CREATE TABLE command or INSERT INTO command, accumulate the lines in command buffer
+            if (inside_create_table) {
+                command_buffer += " " + line;  // Append line to buffer
+                if (line.find(");") != string::npos) {  // Check if ");" is found
+                    inside_create_table = false;  // Reset the flag to false thus stopping the command buffer
+                    process_command_line(command_buffer, filename);  // Process the completed command
+                    command_buffer.clear();  // Clear the buffer
+                }
+                continue;  
+            }
+
             process_command_line(line, filename);
         }
+
         file.close();
 
         string output_file_path = filesystem::current_path().string() + "/Database/" + output_filename;
@@ -53,6 +99,7 @@ void read_file(const string& filename) {
         cout << "File not found: " << filename << endl;
     }
 }
+
 
 // Function to generate output filename based on the input filename
 string get_output_filename(const string& filename) {
@@ -248,30 +295,3 @@ void process_command_line(const string& line, const string& current_database) {
     }
 
 }
-
-
-// void print_tables() {
-//     for (const auto& table : tables) {
-//         //cout << "Table: " << table.first << endl;  // Print table name
-//         for (const auto& header_row : table.second) {
-//             cout << "Headers: ";
-//             for (auto it = header_row.begin(); it != header_row.end(); ++it) {
-//                 if (std::holds_alternative<string>(*it)) {
-//                     cout << std::get<string>(*it);
-//                     if (it != header_row.end() - 1) {  // Check if it's not the last column
-//                         cout << ", ";
-//                     }
-//                 }
-
-//             }
-//             cout << endl;
-//         }
-//     }
-// }
-
-
-
-
-
-
-
