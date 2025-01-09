@@ -9,3 +9,4 @@ customer
 > INSERT INTO customer(customer_id,customer_name,customer_city,customer_state,customer_country,customer_phone,customer_email) VALUES (3,'name3','city3','state3','country3','phone3','email3');
 > INSERT INTO customer(customer_id,customer_name,customer_city,customer_state,customer_country,customer_phone,customer_email) VALUES (4,'name4','city4','state4','country4','phone4','email4');
 > SELECT * FROM customer;
+customer_id, customer_name, customer_city, customer_state, customer_country, customer_phone, customer_email
