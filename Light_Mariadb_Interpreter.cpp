@@ -41,8 +41,9 @@ const int MAX_COLUMN = 10;
 
 int main() {
     string current_directory = filesystem::current_path().string();  // Get current directory
+    string filename = "fileInput2.mdb";
 
-    string input_filename = filesystem::current_path().string() + "/Database/" + "fileInput1.mdb";
+    string input_filename = filesystem::current_path().string() + "/Database/" + filename;
     read_file(input_filename);
 
     return 0;
@@ -105,15 +106,15 @@ void read_file(const string& filename) {
 string get_output_filename(const string& filename) {
     ifstream file(filename);
     string line;
-
     while (getline(file, line)) {
         if (line.find("CREATE ") == 0 && line.find("TABLE") == string::npos && line.back() == ';') {
             string output_filename = line.substr(7);  // Remove the "CREATE " part
             if (output_filename.back() == ';') {
                 output_filename.pop_back();
             }
-            return output_filename;
+            return output_filename ;
         }
+        
     }
     return "output.txt";
 }
