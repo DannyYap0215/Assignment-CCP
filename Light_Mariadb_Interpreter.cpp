@@ -15,12 +15,11 @@ string get_output_filename(const string& filename); // function to get the name 
 void process_command_line(const string& line, const string& current_database); // check for command line
 void print_tables();
 
-vector<string> processed_command_outputs; // a vector of strings containing processed lines after reading in files
+vector<string> processed_command_line_outputs; // a vector of strings containing processed lines after reading in files
 vector<pair<string, vector<vector<variant<int, string>>>>> tables;
 
 int main() {
     string current_directory = filesystem::current_path().string();  // Get current directory
-    cout << "Current Directory: " << current_directory << endl;
 
     string input_filename = filesystem::current_path().string() + "/Database/" + "fileInput1.mdb";
     read_file(input_filename);
@@ -37,7 +36,7 @@ void read_file(const string& filename) {
         string line;
         while (getline(file, line)) {
             if (!line.empty()) {
-                processed_command_outputs.push_back("> " + line);
+                processed_command_line_outputs.push_back("> " + line);
                 cout << "> " << line << endl;
             }
             process_command_line(line, filename);
@@ -45,7 +44,7 @@ void read_file(const string& filename) {
         file.close();
 
         string output_file_path = filesystem::current_path().string() + "/Database/" + output_filename;
-        write_to_file(processed_command_outputs, output_file_path);
+        write_to_file(processed_command_line_outputs, output_file_path);
 
     } else {
         cout << "File not found: " << filename << endl;
@@ -92,6 +91,7 @@ void process_command_line(const string& line, const string& current_database) {
     regex update_command("(UPDATE)(.*)");
     regex delete_command("(DELETE)(.*)");
     regex tables_command("(TABLES;)");
+    regex select_all_from_command(R"(SELECT\s+\*\s+FROM\s+(\w+);)");
 
     string table_name;
 
@@ -101,7 +101,7 @@ void process_command_line(const string& line, const string& current_database) {
         _fullpath(full_path, (current_database).c_str(), FILENAME_MAX);   // (gets abs full path using _fullpath function (current_database).c_str() is the relative path to the database ,the max length of a file)
         string database_path = full_path; // full path converted to a string called database_path
         cout << database_path << endl;
-        processed_command_outputs.push_back(database_path);
+        processed_command_line_outputs.push_back(database_path);
     }
 
     if (regex_search(line, m, create_command)) {
@@ -112,15 +112,19 @@ void process_command_line(const string& line, const string& current_database) {
             //extracts the substring between the parentheses. The + 1 skips the opening parenthesis,
             //and the - 1 excludes the closing parenthesis
             string columns_str = line.substr(line.find('(') + 1, line.find(')') - line.find('(') - 1);
-            regex column_regex(R"((\w+)\s+(\w+))");
-            auto column_begin = sregex_iterator(columns_str.begin(), columns_str.end(), column_regex);
-            auto column_end = sregex_iterator();
+            regex column_regex(R"((\w+)\s+(\w+))"); 
+            //(\w+): Matches one or more word characters (the column name).
+            //\s+: Matches one or more spaces.
+            //(\w+): Matches one or more word characters (the data type, either INT or TEXT).
+            // column_begin is the first match found, column_end is the last match found
+            auto column_begin = sregex_iterator(columns_str.begin(), columns_str.end(), column_regex); //column_regex is the pattern needed to match
+            auto column_end = sregex_iterator(); 
 
             vector<variant<int, string>> headers;
-            for (auto it = column_begin; it != column_end; ++it) {
-                string column_name = (*it)[1].str();
-                string column_type = (*it)[2].str();
-                headers.push_back(column_name);  // For now, just adding column names
+            for (auto i = column_begin; i != column_end; ++i) {
+                string column_name = (*i)[1].str(); //(*it)[1].str() extract column name
+                string column_type = (*i)[2].str(); //(*it)[2].str() extract column type
+                headers.push_back(column_name);  // insert name into the headers vector
             }
 
             // Add the table to the 'tables' vector
@@ -131,32 +135,58 @@ void process_command_line(const string& line, const string& current_database) {
     if (regex_search(line, m, tables_command)) {
         for (const auto& table : tables) {
             cout <<table.first << endl;
-            processed_command_outputs.push_back(table.first);
-            for (const auto& row : table.second) {
-                for (const auto& col : row) {
-                    // Check the type of the variant before accessing it
-                    if (std::holds_alternative<int>(col)) {
-                        cout << std::get<int>(col) << " ";
-                    } else if (std::holds_alternative<string>(col)) {
-                        cout << std::get<string>(col) << " ";
+            processed_command_line_outputs.push_back(table.first); //insert the table name 
+
+            // for (const auto& row : table.second) { // used to get headers
+            //     for (const auto& col : row) {
+            //         // Check the type of the variant before accessing it
+            //         if (std::holds_alternative<int>(col)) { // if it holds int cout int
+            //             cout << std::get<int>(col) << " ";
+            //         } else if (std::holds_alternative<string>(col)) { // if it holds string cout string
+            //             cout << std::get<string>(col) << " ";
+            //         }
+            //     }
+            // }
+        }
+    //print_tables();
+    }
+
+    if (regex_search(line, m, select_all_from_command)) {
+        string output;
+        for (const auto& table : tables) {
+        //cout << "Table: " << table.first << endl;  // Print table name
+            for (const auto& header_row : table.second) {
+                for (auto it = header_row.begin(); it != header_row.end(); ++it) {
+                    if (std::holds_alternative<string>(*it)) {
+                        output = output + std::get<string>(*it); // add column into string called output
+                        if (it != header_row.end() - 1) {  // Check if it's not the last column
+                            output = output + ", "; //add "," for string that is not the last one
+                        }
                     }
                 }
+                cout<<output;
+                processed_command_line_outputs.push_back(output);
                 cout << endl;
+                output.clear();
             }
         }
-     print_tables();
     }
+
 }
 
 void print_tables() {
     for (const auto& table : tables) {
-        cout << "Table: " << table.first << endl;  // Print table name
+        //cout << "Table: " << table.first << endl;  // Print table name
         for (const auto& header_row : table.second) {
             cout << "Headers: ";
-            for (const auto& col : header_row) {
-                if (std::holds_alternative<string>(col)) {
-                    cout << std::get<string>(col) << " ";  // Print the column name
+            for (auto it = header_row.begin(); it != header_row.end(); ++it) {
+                if (std::holds_alternative<string>(*it)) {
+                    cout << std::get<string>(*it);
+                    if (it != header_row.end() - 1) {  // Check if it's not the last column
+                        cout << ", ";
+                    }
                 }
+
             }
             cout << endl;
         }
