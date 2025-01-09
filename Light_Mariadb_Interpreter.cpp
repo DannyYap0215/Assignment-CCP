@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <regex>
 #include <variant>
+#include <sstream>
 
 using namespace std;
 
@@ -17,6 +18,8 @@ void print_tables();
 
 vector<string> processed_command_line_outputs; // a vector of strings containing processed lines after reading in files
 vector<pair<string, vector<vector<variant<int, string>>>>> tables;
+
+const int MAX_COLUMN = 10;
 
 int main() {
     string current_directory = filesystem::current_path().string();  // Get current directory
@@ -84,14 +87,14 @@ void write_to_file(const vector<string>& lines, const string& output_filename) {
 
 // Function to process each command line
 void process_command_line(const string& line, const string& current_database) {
-    regex databases_command("(DATABASES;)");
-    regex create_command("(CREATE TABLE)(.*)");
-    regex insert_command("(INSERT INTO)(.*)");
-    regex select_command("(SELECT)(.*)");
-    regex update_command("(UPDATE)(.*)");
-    regex delete_command("(DELETE)(.*)");
-    regex tables_command("(TABLES;)");
-    regex select_all_from_command(R"(SELECT\s+\*\s+FROM\s+(\w+);)");
+    regex databases_command("(DATABASES;)"); // YAP CHI YI
+    regex create_command("(CREATE TABLE)(.*)"); // YAP CHI YI
+    regex insert_command("(INSERT INTO)(.*)"); // TAN YONG XIN
+    regex update_command("(UPDATE)(.*)"); // THAM MEI TING
+    regex delete_command("(DELETE)(.*)"); // TAN YONG XIN
+    regex select_count_command(R"(SELECT\s+COUNT\(\*\)\s+FROM\s+(\w+);)"); // THAM MEI TING
+    regex tables_command("(TABLES;)"); // YAP CHI YI
+    regex select_all_from_command(R"(SELECT\s+\*\s+FROM\s+(\w+);)"); // YAP CHI YI
 
     string table_name;
 
@@ -123,7 +126,7 @@ void process_command_line(const string& line, const string& current_database) {
             vector<variant<int, string>> headers;
             for (auto i = column_begin; i != column_end; ++i) {
                 string column_name = (*i)[1].str(); //(*it)[1].str() extract column name
-                string column_type = (*i)[2].str(); //(*it)[2].str() extract column type
+                string column_type = (*i)[2].str(); //(*it)[2].str() extract column type // no use
                 headers.push_back(column_name);  // insert name into the headers vector
             }
 
@@ -136,62 +139,135 @@ void process_command_line(const string& line, const string& current_database) {
         for (const auto& table : tables) {
             cout <<table.first << endl;
             processed_command_line_outputs.push_back(table.first); //insert the table name 
-
-            // for (const auto& row : table.second) { // used to get headers
-            //     for (const auto& col : row) {
-            //         // Check the type of the variant before accessing it
-            //         if (std::holds_alternative<int>(col)) { // if it holds int cout int
-            //             cout << std::get<int>(col) << " ";
-            //         } else if (std::holds_alternative<string>(col)) { // if it holds string cout string
-            //             cout << std::get<string>(col) << " ";
-            //         }
-            //     }
-            // }
         }
-    //print_tables();
     }
 
     if (regex_search(line, m, select_all_from_command)) {
-        string output;
+        string table_name = m[1];  // Capture the table name from the SELECT query
+        string header_row;
+        string data_row;
+
         for (const auto& table : tables) {
-        //cout << "Table: " << table.first << endl;  // Print table name
-            for (const auto& header_row : table.second) {
-                for (auto it = header_row.begin(); it != header_row.end(); ++it) {
-                    if (std::holds_alternative<string>(*it)) {
-                        output = output + std::get<string>(*it); // add column into string called output
-                        if (it != header_row.end() - 1) {  // Check if it's not the last column
-                            output = output + ", "; //add "," for string that is not the last one
+            if (table.first == table_name) {  // Match the table name
+                // Print column headers
+                for (int i = 0; i < table.second[0].size(); ++i) { // i = 0 here access the header row
+                    if (std::holds_alternative<string>(table.second[0][i])) {
+                        if (i != table.second[0].size() - 1) {
+                            cout << std::get<string>(table.second[0][i]) + ",";
+                            header_row = header_row + std::get<string>(table.second[0][i]) + "," ;
+                            
+                        } else { // check if the header is the last one, if yes dont add "," to it
+                            cout << std::get<string>(table.second[0][i]);
+                            header_row = header_row + std::get<string>(table.second[0][i])  ;
                         }
                     }
                 }
-                cout<<output;
-                processed_command_line_outputs.push_back(output);
+                processed_command_line_outputs.push_back(header_row);
                 cout << endl;
-                output.clear();
-            }
-        }
-    }
 
-}
-
-void print_tables() {
-    for (const auto& table : tables) {
-        //cout << "Table: " << table.first << endl;  // Print table name
-        for (const auto& header_row : table.second) {
-            cout << "Headers: ";
-            for (auto it = header_row.begin(); it != header_row.end(); ++it) {
-                if (std::holds_alternative<string>(*it)) {
-                    cout << std::get<string>(*it);
-                    if (it != header_row.end() - 1) {  // Check if it's not the last column
-                        cout << ", ";
+                // Print rows of data
+                for (int i = 1; i < table.second.size(); ++i) {  // starts from row 1 as row 0 here is the header
+                    for (int j = 0; j < table.second[i].size(); ++j) {  // Iterate over columns
+                        // If it's not the last column, print with a comma
+                        if (j != table.second[i].size() - 1) {
+                            if (std::holds_alternative<string>(table.second[i][j])) {
+                                cout << std::get<string>(table.second[i][j]) + ",";
+                                data_row = data_row + std::get<string>(table.second[i][j]) + "," ;
+                            } else if (std::holds_alternative<int>(table.second[i][j])) {
+                                string change_int_data_to_string ;
+                                change_int_data_to_string = to_string(std::get<int>(table.second[i][j]));
+                                cout << change_int_data_to_string << ",";
+                                data_row = data_row + change_int_data_to_string + ",";
+                            }
+                        }
+                        // For the last column, print without a comma
+                        else {
+                            if (std::holds_alternative<string>(table.second[i][j])) {
+                                cout << std::get<string>(table.second[i][j]);
+                                data_row = data_row + std::get<string>(table.second[i][j]) ;
+                            } else if (std::holds_alternative<int>(table.second[i][j])) {
+                                string change_int_data_to_string ;
+                                change_int_data_to_string = to_string(std::get<int>(table.second[i][j]));
+                                cout << change_int_data_to_string << ",";
+                                data_row = data_row + change_int_data_to_string  + ",";
+                            }
+                        }
                     }
+                    processed_command_line_outputs.push_back(data_row);
+                    data_row.clear();
+                    cout << endl;  // New line after each row
                 }
-
             }
-            cout << endl;
         }
     }
+
+
+    if (regex_search(line, m, insert_command)) {
+    regex table_name_regex(R"(INSERT INTO (\w+))");  // Regex to capture the table name
+    smatch table_name_match;
+
+        if (regex_search(line, table_name_match, table_name_regex)) {
+            string table_name = table_name_match[1].str();
+            auto table_iter = find_if(tables.begin(), tables.end(), 
+                                    [&table_name](const pair<string, vector<vector<variant<int, string>>>>& table) {
+                                        return table.first == table_name;
+                                    });
+
+            if (table_iter != tables.end()) {
+                auto& table_rows = table_iter->second;  // Access rows of the correct table
+
+                // Extract the part after 'VALUES' using regex
+                regex values_regex(R"(VALUES\s+\(([^)]+)\))");  // Matches the values after 'VALUES ( ... )'
+                smatch values_match;
+
+                if (regex_search(line, values_match, values_regex)) {
+                    string values_str = values_match[1].str();  // Get the matched values string
+
+                    // Split the values by commas and trim extra spaces
+                    stringstream ss(values_str);
+                    string value;
+
+                    // add values to the table's rows
+                    vector<variant<int, string>> row_data;  // Vector to store a single row of data
+                    while (getline(ss, value, ',')) {
+                        // Check if the value contains a space to decide if it's a string
+                        if (value.find(" ") != string::npos || value.front() == '\'' || value.back() == '\'') {
+                            // for string value (may contain spaces or be wrapped in quotes)
+                            row_data.push_back(value.substr(1, value.size() - 2));  // Remove quotes from string , as 1 here is "
+                        } else {
+                            // for int value
+                            row_data.push_back(stoi(value));  // Convert to int and add to the row
+                        }
+                    }
+
+                    // Insert the row directly into the table's rows
+                    table_rows.push_back(row_data);
+                }
+            }
+        }
+    }
+
 }
+
+
+// void print_tables() {
+//     for (const auto& table : tables) {
+//         //cout << "Table: " << table.first << endl;  // Print table name
+//         for (const auto& header_row : table.second) {
+//             cout << "Headers: ";
+//             for (auto it = header_row.begin(); it != header_row.end(); ++it) {
+//                 if (std::holds_alternative<string>(*it)) {
+//                     cout << std::get<string>(*it);
+//                     if (it != header_row.end() - 1) {  // Check if it's not the last column
+//                         cout << ", ";
+//                     }
+//                 }
+
+//             }
+//             cout << endl;
+//         }
+//     }
+// }
 
 
 
