@@ -135,7 +135,7 @@ void write_to_file(const vector<string>& lines, const string& output_filename) {
 
 // Function to process each command line
 void process_command_line(const string& line, const string& current_database) {
-    regex databases_command("(DATABASES;)"); // YAP CHI YI
+    regex databases_command("(DATABASES;)"); // THAM MEI TING
     regex create_command("(CREATE TABLE)(.*)"); // YAP CHI YI
     regex insert_command("(INSERT INTO)(.*)"); // TAN YONG XIN
     regex update_command("(UPDATE)(.*)"); // THAM MEI TING
@@ -196,7 +196,8 @@ void process_command_line(const string& line, const string& current_database) {
         string data_row;
 
         for (const auto& table : tables) {
-            if (table.first == table_name) {  // Match the table name
+            //**for now there are not going to be multiple tables when running the program**
+            if (table.first == table_name) {  // Match the table name and access the specific table, 
                 // Print column headers
                 for (int i = 0; i < table.second[0].size(); ++i) { // i = 0 here access the header row
                     if (std::holds_alternative<string>(table.second[0][i])) {
@@ -251,11 +252,11 @@ void process_command_line(const string& line, const string& current_database) {
 
 
     if (regex_search(line, m, insert_command)) {
-    regex table_name_regex(R"(INSERT INTO (\w+))");  // Regex to capture the table name
-    smatch table_name_match;
+    regex table_name_regex(R"(INSERT INTO (\w+))");  // Regex to capture the table name and access the specifc table data
+    smatch table_name_match; 
 
         if (regex_search(line, table_name_match, table_name_regex)) {
-            string table_name = table_name_match[1].str();
+            string table_name = table_name_match[1].str(); // table_name_match[1].str() refer to "customers"; if table_name_match[0].str() then it refers to "INSERT INTO customers"
             auto table_iter = find_if(tables.begin(), tables.end(), 
                                     [&table_name](const pair<string, vector<vector<variant<int, string>>>>& table) {
                                         return table.first == table_name;
