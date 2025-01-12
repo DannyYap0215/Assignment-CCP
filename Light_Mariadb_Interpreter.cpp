@@ -10,7 +10,7 @@
 // Member_4: ID | NAME | EMAIL | PHONE
 // *********************************************************
 // Task Distribution
-// Member_1: function: read_file ,get_output_filename ,write_to_file | Commands function: DATABASES, CREATE TABLE, TABLES, SELECT * FROM
+// Member_1: function: read_file, get_output_filename, write_to_file | Commands function: CREATE TABLE, TABLES, SELECT * FROM
 // Member_2: 
 // Member_3:
 // Member_4:
@@ -102,7 +102,7 @@ void read_file(const string& filename) {
 }
 
 
-// Function to generate output filename based on the input filename
+// essentially the CREATE command
 string get_output_filename(const string& filename) {
     ifstream file(filename);
     string line;
@@ -135,10 +135,10 @@ void write_to_file(const vector<string>& lines, const string& output_filename) {
 
 // Function to process each command line
 void process_command_line(const string& line, const string& current_database) {
-    regex databases_command("(DATABASES;)"); // YAP CHI YI
+    regex databases_command("(DATABASES;)"); // THAM MEI TING
     regex create_command("(CREATE TABLE)(.*)"); // YAP CHI YI
     regex insert_command("(INSERT INTO)(.*)"); // TAN YONG XIN
-    regex update_command("(UPDATE)(.*)"); // THAM MEI TING
+    regex update_command(R"(UPDATE\s+(\w+)\s+SET\s+(\w+)\s*=\s*'?(.*?)'?\s+WHERE\s+(\w+)\s*=\s*'?(.*?)'?\s*;)"); // THAM MEI TING
     regex delete_command("(DELETE)(.*)"); // TAN YONG XIN
     regex select_count_command(R"(SELECT\s+COUNT\(\*\)\s+FROM\s+(\w+);)"); // THAM MEI TING
     regex tables_command("(TABLES;)"); // YAP CHI YI
@@ -147,6 +147,60 @@ void process_command_line(const string& line, const string& current_database) {
     string table_name;
 
     smatch m;
+
+    if (regex_match(line, m, update_command)){
+        string table_name = m[1].str();        // table name
+        string set_column = m[2].str();        // update column
+        string new_value = m[3].str();         // new value
+        string condition_column = m[4].str();  // column in -where-
+        string condition_value = m[5].str();   // value in -where-
+
+        // find table in -table- vector
+        auto table_it = find_if(tables.begin(), tables.end(), [&](const auto& t){
+            return t.first == table_name;
+        });
+
+        if (table_it == tables.end()){ // not found, xit
+            return;
+        }
+
+        auto& table = table_it->second;
+        auto& headers = table[0];
+        int set_col_index = -1;
+        int cond_col_index = -1;
+
+        // find i for set col and condition col
+        for (int i = 0; i < headers.size(); ++i){
+            if (get<string>(headers[i]) == set_column) set_col_index = i;
+            if (get<string>(headers[i]) == condition_column) cond_col_index = i;
+        }
+
+        if (set_col_index == -1 || cond_col_index == -1){
+            return;
+        }
+
+        int updated_rows = 0;
+        for (auto& row : table){
+            if (std::holds_alternative<std::string>(row[cond_col_index])){ // check
+                if (std::get<std::string>(row[cond_col_index]) == condition_value){ // compare
+                    row[set_col_index] = new_value; // update
+                    ++updated_rows;
+                }
+            } else if (std::holds_alternative<int>(row[cond_col_index])){ // check
+                try {
+                    int cond_value_as_int = std::stoi(condition_value); // convert to integer
+                    if (std::get<int>(row[cond_col_index]) == cond_value_as_int){ // compare
+                        row[set_col_index] = new_value; // update
+                        ++updated_rows;
+                    }
+                } catch (std::invalid_argument& e){ // not valid, exit
+                    return;
+                }
+            }
+        }
+    }
+
+    
     if (regex_search(line, m, databases_command)) {
         char full_path[FILENAME_MAX];    // full_path is an array which contains FILENAME_MAX (the max length of a file)
         _fullpath(full_path, (current_database).c_str(), FILENAME_MAX);   // (gets abs full path using _fullpath function (current_database).c_str() is the relative path to the database ,the max length of a file)
@@ -183,6 +237,23 @@ void process_command_line(const string& line, const string& current_database) {
         }
     }
 
+    if (regex_search(line, m, select_count_command)){
+        string table_name = m[1];
+        int row_count = 0;  
+
+        for (const auto& table : tables) { // find the table
+            if (table.first == table_name) {
+                // loop the rows in the table
+                for (size_t i = 1; i < table.second.size(); ++i){
+                    row_count++;
+                }
+
+            }
+        }
+        cout << row_count << endl;
+        processed_command_line_outputs.push_back(to_string(row_count)); 
+    }
+
     if (regex_search(line, m, tables_command)) {
         for (const auto& table : tables) {
             cout <<table.first << endl;
@@ -196,7 +267,8 @@ void process_command_line(const string& line, const string& current_database) {
         string data_row;
 
         for (const auto& table : tables) {
-            if (table.first == table_name) {  // Match the table name
+            //**for now there are not going to be multiple tables when running the program**
+            if (table.first == table_name) {  // Match the table name and access the specific table, 
                 // Print column headers
                 for (int i = 0; i < table.second[0].size(); ++i) { // i = 0 here access the header row
                     if (std::holds_alternative<string>(table.second[0][i])) {
@@ -251,11 +323,11 @@ void process_command_line(const string& line, const string& current_database) {
 
 
     if (regex_search(line, m, insert_command)) {
-    regex table_name_regex(R"(INSERT INTO (\w+))");  // Regex to capture the table name
-    smatch table_name_match;
+    regex table_name_regex(R"(INSERT INTO (\w+))");  // Regex to capture the table name and access the specifc table data
+    smatch table_name_match; 
 
         if (regex_search(line, table_name_match, table_name_regex)) {
-            string table_name = table_name_match[1].str();
+            string table_name = table_name_match[1].str(); // table_name_match[1].str() refer to "customers"; if table_name_match[0].str() then it refers to "INSERT INTO customers"
             auto table_iter = find_if(tables.begin(), tables.end(), 
                                     [&table_name](const pair<string, vector<vector<variant<int, string>>>>& table) {
                                         return table.first == table_name;
