@@ -139,7 +139,7 @@ void process_command_line(const string& line, const string& current_database) {
     regex create_command("(CREATE TABLE)(.*)"); // YAP CHI YI
     regex insert_command("(INSERT INTO)(.*)"); // TAN YONG XIN
     regex update_command(R"(UPDATE\s+(\w+)\s+SET\s+(\w+)\s*=\s*'?(.*?)'?\s+WHERE\s+(\w+)\s*=\s*'?(.*?)'?\s*;)"); // THAM MEI TING
-    regex delete_command("(DELETE)(.*)"); // TAN YONG XIN
+    regex delete_command(R"(DELETE\s+FROM\s+(\w+)\s+WHERE\s+(\w+)\s*=\s*'?(.*?)'?\s*;)"); // TAN YONG XIN
     regex select_count_command(R"(SELECT\s+COUNT\(\*\)\s+FROM\s+(\w+);)"); // THAM MEI TING
     regex tables_command("(TABLES;)"); // YAP CHI YI
     regex select_all_from_command(R"(SELECT\s+\*\s+FROM\s+(\w+);)"); // YAP CHI YI
@@ -367,4 +367,68 @@ void process_command_line(const string& line, const string& current_database) {
         }
     }
 
+    if (regex_search(line, m, delete_command)) {
+        string table_name = m[1].str();
+        string condition_column = m[2].str();
+        string condition_value = m[3].str();
+
+        auto table_it = find_if(tables.begin(), tables.end(), [&](const auto& t){
+            return t.first == table_name;
+        });
+
+        if (table_it != tables.end()) {
+            auto& table = table_it->second;
+            auto& headers = table[0];
+            int cond_col_index = -1;
+
+            // Find the column index for the condition column
+            for (int i = 0; i < headers.size(); ++i) {
+                if (get<string>(headers[i]) == condition_column) {
+                    cond_col_index = i;
+                    break;
+                }
+            }
+
+            if (cond_col_index != -1) {
+                cout << "Error: Condition column '" << condition_column << "' not found." << endl;
+                return;  // Column not found
+            }
+
+            int deleted_rows = 0;  // To track the number of deleted rows
+
+            // Loop through the rows and delete rows matching the condition
+            auto it = table.begin() + 1; // Skip the header row
+            while (it != table.end()) {
+                bool should_delete = false;
+                if (std::holds_alternative<string>((*it)[cond_col_index])){ 
+                    should_delete = std::get<string>((*it)[cond_col_index]) == condition_value;
+                } else if (std::holds_alternative<int>((*it)[cond_col_index])) {
+                    try {
+                        int cond_value_as_int = std::stoi(condition_value); // Convert to int
+                        should_delete = std::get<int>((*it)[cond_col_index]) == cond_value_as_int;
+                    } catch (const std::invalid_argument&) {
+                        cout << "Error: Invalid argument for condition value." << endl;
+                        return;
+                    }
+                }
+
+                // If the condition matches, delete the row
+                if (should_delete) {
+                    it = table.erase(it);
+                    ++deleted_rows;
+                } else {
+                    ++it;  // Only move to the next row if no deletion
+                }
+            }
+
+            // Print a message about the number of rows deleted
+            if (deleted_rows > 0) {
+                cout << "Deleted " << deleted_rows << " row(s) from table " << table_name << "." << endl;
+            } else {
+                cout << "No rows matched the condition to delete." << endl;
+            }
+        } else {
+            cout << "Error: Table " << table_name << " not found." << endl;
+        }
+    }
 }
