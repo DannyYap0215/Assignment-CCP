@@ -1,20 +1,20 @@
-// *********************************************************
+// *******************
 // Program: Light_Mariadb_Interpreter.cpp
 // Course: CCP6114 Programming Fundamentals
 // Lecture Class: TC1L
 // Tutorial Class: TT1L
 // Trimester: 2430
 // Member_1: 242UC244KX | YAP CHI YI | YAP.CHI.YI@student.mmu.edu.my | 018-2694514
-// Member_2: ID | NAME | EMAIL | PHONE
-// Member_3: ID | NAME | EMAIL | PHONE
+// Member_2: 242UC244S6 | THAM MEI TING | THAM.MEI.TING@student.mmu.edu.my | 0173268006
+// Member_3: 242UC244PF | TAN YONG XIN | TAN.YONG.XIN@student.edu.mmu.my | 0126556505
 // Member_4: ID | NAME | EMAIL | PHONE
-// *********************************************************
+// *******************
 // Task Distribution
-// Member_1: function: read_file, get_output_filename, write_to_file | Commands function: CREATE TABLE, TABLES, SELECT * FROM
-// Member_2: 
-// Member_3:
+// Member_1: function: read_file, get_output_filename, write_to_file, process_command_line | Commands function: CREATE TABLE, TABLES, SELECT * FROM
+// Member_2: Command function: UPDATE, SELECT COUNT， DATABASE
+// Member_3: Command function: INSERT INTO, DELETE
 // Member_4:
-// *********************************************************
+// *******************
 
 #include <iostream>
 #include <fstream>
@@ -28,23 +28,22 @@
 using namespace std;
 
 // Function prototypes
-void read_file(const string& filename); // function to read input file
+void read_file(const string& filename);                                         // function to read input file
 void write_to_file(const vector<string>& lines, const string& output_filename); // functions to write output to output file
-string get_output_filename(const string& filename); // function to get the name for creating output file
-void process_command_line(const string& line, const string& current_database); // check for command line
-void print_tables();
+string get_output_filename(const string& filename);                             // function to get the name for creating output file
+void process_command_line(const string& line, const string& current_database);  // check for command line
 
-vector<string> processed_command_line_outputs; // a vector of strings containing processed lines after reading in files
-vector<pair<string, vector<vector<variant<int, string>>>>> tables;
+vector<string> processed_command_line_outputs;                     // a vector of strings containing processed lines after reading in files
+vector<pair<string, vector<vector<variant<int, string>>>>> tables; // a vector containing {string which is tablename,{2d vector data which could contain either int or string}}
 
 const int MAX_COLUMN = 10;
 
 int main() {
-    string current_directory = filesystem::current_path().string();  // Get current directory
-    string filename = "fileInput2.mdb";
+    string current_directory = filesystem::current_path().string();  // Get current directory to current folder
+    string filename = "fileInput2.mdb"; //choose a input file to be inserted
 
-    string input_filename = filesystem::current_path().string() + "/Database/" + filename;
-    read_file(input_filename);
+    string input_filename = filesystem::current_path().string() + "/Database/" + filename; //get directory to input file
+    read_file(input_filename); // insert directory of input file to read_file function
 
     return 0;
 }
@@ -52,20 +51,20 @@ int main() {
 // Function to read the input file
 void read_file(const string& filename) {
     ifstream file(filename);
-    string output_filename = get_output_filename(filename);
-    
-    if (file.is_open()) {
+    string output_filename = get_output_filename(filename); //get out_filename through inserting inputfilename into get_output_filename function
+
+    if (file.is_open()) { //opens input file
         string line;
-        string command_buffer;  // temporarly accumulate multiple line commands
+        string command_buffer;  // temporarly accumulate multiple line commands for multiple line commands purpose
         bool inside_create_table = false;  // track multiple line commands
 
         while (getline(file, line)) {
-            if (!line.empty()) {
-                if (inside_create_table){ // bassically if no command type are found ,">" will not be added
+            if (!line.empty()) { 
+                if (inside_create_table){ //this is only for CREATE TABLE AND INSERT INTO case where multiple lined commands is present
+                    cout <<line << endl;  //bassically if no command type are found ,">" will not be added
                     processed_command_line_outputs.push_back(line);
-                    cout <<line << endl;
-                } else{ 
-                    processed_command_line_outputs.push_back("> " + line); 
+                } else{                   // else for other commands just add ">" as intended
+                    processed_command_line_outputs.push_back("> " + line);
                     cout << "> " << line << endl;
                 }
             }
@@ -85,16 +84,16 @@ void read_file(const string& filename) {
                     process_command_line(command_buffer, filename);  // Process the completed command
                     command_buffer.clear();  // Clear the buffer
                 }
-                continue;  
+                continue;
             }
-
+            // if no multiple lined commands present just insert each line to read for command through process_command_line
             process_command_line(line, filename);
         }
 
         file.close();
 
-        string output_file_path = filesystem::current_path().string() + "/Database/" + output_filename;
-        write_to_file(processed_command_line_outputs, output_file_path);
+        string output_file_path = filesystem::current_path().string() + "/Database/" + output_filename; //path to output file
+        write_to_file(processed_command_line_outputs, output_file_path); // write processed_command_line_outputs which contain processed lines into our output file
 
     } else {
         cout << "File not found: " << filename << endl;
@@ -102,19 +101,19 @@ void read_file(const string& filename) {
 }
 
 
-// essentially the CREATE command
+// function to get the output filename
 string get_output_filename(const string& filename) {
-    ifstream file(filename);
+    ifstream file(filename); //opens input file
     string line;
-    while (getline(file, line)) {
-        if (line.find("CREATE ") == 0 && line.find("TABLE") == string::npos && line.back() == ';') {
+    while (getline(file, line)) { //read through input and find lines where CREATE is present but TABLE is not present to avoid clashing with CREATE TABLE
+        if (line.find("CREATE ") == 0 && line.find("TABLE") == string::npos && line.back() == ';') { // make sure ";" is the last element
             string output_filename = line.substr(7);  // Remove the "CREATE " part
-            if (output_filename.back() == ';') {
+            if (output_filename.back() == ';') { //replace ';' with nothing , essentialy removing ';' from the line
                 output_filename.pop_back();
             }
             return output_filename ;
         }
-        
+
     }
     return "output.txt";
 }
@@ -123,8 +122,8 @@ string get_output_filename(const string& filename) {
 void write_to_file(const vector<string>& lines, const string& output_filename) {
     ofstream output_file(output_filename);
 
-    if (output_file.is_open()) {
-        for (const auto& line : lines) {
+    if (output_file.is_open()) { //open output file
+        for (const auto& line : lines) { //insert all lines into output file
             output_file << line << endl;
         }
         output_file.close();
@@ -146,121 +145,128 @@ void process_command_line(const string& line, const string& current_database) {
 
     string table_name;
 
-    smatch m;
+    smatch m; // m is lines that is matched
 
+    // command for updating data in the tables
     if (regex_match(line, m, update_command)){
-        string table_name = m[1].str();        // table name
-        string set_column = m[2].str();        // update column
-        string new_value = m[3].str();         // new value
-        string condition_column = m[4].str();  // column in -where-
-        string condition_value = m[5].str();   // value in -where-
+        string table_name = m[1].str();        // extract table name
+        string set_column = m[2].str();        // extract column to be updated
+        string new_value = m[3].str();         // extract new value to set
+        string condition_column = m[4].str();  // extract the column used in WHERE condiion
+        string condition_value = m[5].str();   // extract the value used in WHERE condition
 
-        // find table in -table- vector
+        // find table in table vector
         auto table_it = find_if(tables.begin(), tables.end(), [&](const auto& t){
-            return t.first == table_name;
+            return t.first == table_name; // check if match with table name
         });
 
-        if (table_it == tables.end()){ // not found, xit
+        if (table_it == tables.end()){ // table not found, exit function
             return;
         }
 
-        auto& table = table_it->second;
-        auto& headers = table[0];
-        int set_col_index = -1;
-        int cond_col_index = -1;
+        auto& table = table_it->second; // reference the found table
+        auto& headers = table[0]; // get table headers (column names)
+        int set_col_index = -1; // index of column to be updated
+        int cond_col_index = -1; // index of column used in WHERE condition
 
-        // find i for set col and condition col
+        // find i for set column and condition column
         for (int i = 0; i < headers.size(); ++i){
-            if (get<string>(headers[i]) == set_column) set_col_index = i;
-            if (get<string>(headers[i]) == condition_column) cond_col_index = i;
+            if (get<string>(headers[i]) == set_column) set_col_index = i; // matches with column to be updated
+            if (get<string>(headers[i]) == condition_column) cond_col_index = i; // matches with condition column
         }
 
         if (set_col_index == -1 || cond_col_index == -1){
-            return;
+            return; // column index not found, exit function
         }
 
-        int updated_rows = 0;
+        int updated_rows = 0; // counter of row updates
         for (auto& row : table){
-            if (std::holds_alternative<std::string>(row[cond_col_index])){ // check
-                if (std::get<std::string>(row[cond_col_index]) == condition_value){ // compare
-                    row[set_col_index] = new_value; // update
+            if (holds_alternative<string>(row[cond_col_index])){ // check if condition column contain string
+                if (get<string>(row[cond_col_index]) == condition_value){ // comparison
+                    row[set_col_index] = new_value; // condition matches, update the value in specified column
                     ++updated_rows;
                 }
-            } else if (std::holds_alternative<int>(row[cond_col_index])){ // check
+            } else if (holds_alternative<int>(row[cond_col_index])){ // check if condition contain integer
                 try {
-                    int cond_value_as_int = std::stoi(condition_value); // convert to integer
-                    if (std::get<int>(row[cond_col_index]) == cond_value_as_int){ // compare
-                        row[set_col_index] = new_value; // update
+                    int cond_value_as_int = stoi(condition_value); // convert condition value to integer
+                    if (get<int>(row[cond_col_index]) == cond_value_as_int){ // comparison
+                        row[set_col_index] = new_value; // condition matches, update the value in specified column
                         ++updated_rows;
                     }
-                } catch (std::invalid_argument& e){ // not valid, exit
+                } catch (invalid_argument& e){ // not valid, exit fucntion
                     return;
                 }
             }
         }
     }
 
-    
+    //command to get path to input file
     if (regex_search(line, m, databases_command)) {
         char full_path[FILENAME_MAX];    // full_path is an array which contains FILENAME_MAX (the max length of a file)
         _fullpath(full_path, (current_database).c_str(), FILENAME_MAX);   // (gets abs full path using _fullpath function (current_database).c_str() is the relative path to the database ,the max length of a file)
         string database_path = full_path; // full path converted to a string called database_path
         cout << database_path << endl;
         processed_command_line_outputs.push_back(database_path);
+        //so what this means that a string starting from the first character of current_database 
+        //is stored in full_path with the capacity of FILENAME_MAX
     }
 
+    // command to both create the table_name and get the headers for making the table
     if (regex_search(line, m, create_command)) {
         if (line.find("CREATE TABLE ") == 0) {
-            table_name = line.substr(13, line.find('(') - 13);
+            table_name = line.substr(13, line.find('(') - 13); //get the table name which starts from index 13 and end before '('
 
             // Extract the columns
             //extracts the substring between the parentheses. The + 1 skips the opening parenthesis,
             //and the - 1 excludes the closing parenthesis
             string columns_str = line.substr(line.find('(') + 1, line.find(')') - line.find('(') - 1);
-            regex column_regex(R"((\w+)\s+(\w+))"); 
+            regex column_regex(R"((\w+)\s+(\w+))");
             //(\w+): Matches one or more word characters (the column name).
             //\s+: Matches one or more spaces.
             //(\w+): Matches one or more word characters (the data type, either INT or TEXT).
             // column_begin is the first match found, column_end is the last match found
             auto column_begin = sregex_iterator(columns_str.begin(), columns_str.end(), column_regex); //column_regex is the pattern needed to match
-            auto column_end = sregex_iterator(); 
+            auto column_end = sregex_iterator();
 
-            vector<variant<int, string>> headers;
+            vector<variant<int, string>> headers; //create a vector which could contain either int or string just for headers
             for (auto i = column_begin; i != column_end; ++i) {
                 string column_name = (*i)[1].str(); //(*it)[1].str() extract column name
                 string column_type = (*i)[2].str(); //(*it)[2].str() extract column type // no use
-                headers.push_back(column_name);  // insert name into the headers vector
+                headers.push_back(column_name);  // insert name of each columns into the headers vector
             }
 
             // Add the table to the 'tables' vector
-            tables.push_back({table_name, {headers}});
+            tables.push_back({table_name, {headers}}); //add into the vector which has the same table name, and add
         }
     }
 
+    //command to get the rows of data in the table
     if (regex_search(line, m, select_count_command)){
-        string table_name = m[1];
-        int row_count = 0;  
+        string table_name = m[1]; // extract table name
+        int row_count = 0; // initialize row counter
 
-        for (const auto& table : tables) { // find the table
+        for (const auto& table : tables) { // find the matching table
             if (table.first == table_name) {
-                // loop the rows in the table
+                // loop the rows in the table and count them
                 for (size_t i = 1; i < table.second.size(); ++i){
                     row_count++;
                 }
 
             }
         }
-        cout << row_count << endl;
-        processed_command_line_outputs.push_back(to_string(row_count)); 
+        cout << row_count << endl; // print out total number of rows
+        processed_command_line_outputs.push_back(to_string(row_count)); // add row count to processed output list
     }
 
+    //command to get the table name
     if (regex_search(line, m, tables_command)) {
         for (const auto& table : tables) {
             cout <<table.first << endl;
-            processed_command_line_outputs.push_back(table.first); //insert the table name 
+            processed_command_line_outputs.push_back(table.first); //insert the table name
         }
     }
 
+    //command to print out tables data
     if (regex_search(line, m, select_all_from_command)) {
         string table_name = m[1];  // Capture the table name from the SELECT query
         string header_row;
@@ -268,67 +274,68 @@ void process_command_line(const string& line, const string& current_database) {
 
         for (const auto& table : tables) {
             //**for now there are not going to be multiple tables when running the program**
-            if (table.first == table_name) {  // Match the table name and access the specific table, 
+            if (table.first == table_name) {  // Match the table name and access the specific table,
                 // Print column headers
                 for (int i = 0; i < table.second[0].size(); ++i) { // i = 0 here access the header row
-                    if (std::holds_alternative<string>(table.second[0][i])) {
+                    if (holds_alternative<string>(table.second[0][i])) {
                         if (i != table.second[0].size() - 1) {
-                            cout << std::get<string>(table.second[0][i]) + ",";
-                            header_row = header_row + std::get<string>(table.second[0][i]) + "," ;
-                            
+                            cout << get<string>(table.second[0][i]) + ",";
+                            header_row = header_row + get<string>(table.second[0][i]) + "," ;
+
                         } else { // check if the header is the last one, if yes dont add "," to it
-                            cout << std::get<string>(table.second[0][i]);
-                            header_row = header_row + std::get<string>(table.second[0][i])  ;
+                            cout << get<string>(table.second[0][i]);
+                            header_row = header_row + get<string>(table.second[0][i])  ;
                         }
                     }
                 }
-                processed_command_line_outputs.push_back(header_row);
+                processed_command_line_outputs.push_back(header_row); // add the headers into vector = processed_command_line_outputs
                 cout << endl;
 
                 // Print rows of data
                 for (int i = 1; i < table.second.size(); ++i) {  // starts from row 1 as row 0 here is the header
                     for (int j = 0; j < table.second[i].size(); ++j) {  // Iterate over columns
-                        // If it's not the last column, print with a comma
-                        if (j != table.second[i].size() - 1) {
-                            if (std::holds_alternative<string>(table.second[i][j])) {
-                                cout << std::get<string>(table.second[i][j]) + ",";
-                                data_row = data_row + std::get<string>(table.second[i][j]) + "," ;
-                            } else if (std::holds_alternative<int>(table.second[i][j])) {
+                        // If its not the last column, print with a comma
+                        // (j != table.second[i].size() - 1) checks if its the last row
+                        if (j != table.second[i].size() - 1) { // for loop to add each lines of row into a string called data_row
+                            if (holds_alternative<string>(table.second[i][j])) {  // checks if string
+                                cout << get<string>(table.second[i][j]) + ",";
+                                data_row = data_row + get<string>(table.second[i][j]) + "," ; //add the output into data_row containing strings
+                            } else if (holds_alternative<int>(table.second[i][j])) { //checks if its an int data change it to string and add to data_row
                                 string change_int_data_to_string ;
-                                change_int_data_to_string = to_string(std::get<int>(table.second[i][j]));
+                                change_int_data_to_string = to_string(get<int>(table.second[i][j]));
                                 cout << change_int_data_to_string << ",";
                                 data_row = data_row + change_int_data_to_string + ",";
                             }
                         }
                         // For the last column, print without a comma
                         else {
-                            if (std::holds_alternative<string>(table.second[i][j])) {
-                                cout << std::get<string>(table.second[i][j]);
-                                data_row = data_row + std::get<string>(table.second[i][j]) ;
-                            } else if (std::holds_alternative<int>(table.second[i][j])) {
+                            if (holds_alternative<string>(table.second[i][j])) {
+                                cout << get<string>(table.second[i][j]);
+                                data_row = data_row + get<string>(table.second[i][j]) ;
+                            } else if (holds_alternative<int>(table.second[i][j])) {
                                 string change_int_data_to_string ;
-                                change_int_data_to_string = to_string(std::get<int>(table.second[i][j]));
-                                cout << change_int_data_to_string << ",";
-                                data_row = data_row + change_int_data_to_string  + ",";
+                                change_int_data_to_string = to_string(get<int>(table.second[i][j]));
+                                cout << change_int_data_to_string ;
+                                data_row = data_row + change_int_data_to_string ;
                             }
                         }
                     }
-                    processed_command_line_outputs.push_back(data_row);
-                    data_row.clear();
+                    processed_command_line_outputs.push_back(data_row); //adds the string into vector = processed_command_line_outputs
+                    data_row.clear(); // clear the data of data_row
                     cout << endl;  // New line after each row
                 }
             }
         }
     }
 
-
+    //command to add data into tables
     if (regex_search(line, m, insert_command)) {
     regex table_name_regex(R"(INSERT INTO (\w+))");  // Regex to capture the table name and access the specifc table data
-    smatch table_name_match; 
+    smatch table_name_match;
 
         if (regex_search(line, table_name_match, table_name_regex)) {
             string table_name = table_name_match[1].str(); // table_name_match[1].str() refer to "customers"; if table_name_match[0].str() then it refers to "INSERT INTO customers"
-            auto table_iter = find_if(tables.begin(), tables.end(), 
+            auto table_iter = find_if(tables.begin(), tables.end(),
                                     [&table_name](const pair<string, vector<vector<variant<int, string>>>>& table) {
                                         return table.first == table_name;
                                     });
