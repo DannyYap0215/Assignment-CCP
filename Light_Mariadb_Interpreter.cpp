@@ -365,19 +365,17 @@ void process_command_line(const string& line, const string& current_database) {
         }
     }
 
-     if (regex_search(line, m, delete_command)) {
-        string table_name = m[1].str();
-        string condition_column = m[2].str();
-        string condition_value = m[3].str();
+    if (regex_search(line, m, delete_command)) {
+    string table_name = m[1].str();
+    string condition_column = m[2].str();
+    string condition_value = m[3].str();
 
-        auto table_it = find_if(tables.begin(), tables.end(), [&](const auto& t){
-            return t.first == table_name;
-        });
-
-        if (table_it != tables.end()) {
-            auto& table = table_it->second;
-            auto& headers = table[0];
-            int cond_col_index = -1;
+    // match the table in tables
+    for (auto& table_entry : tables) {
+        if (table_name == table_entry.first) { // get the table name
+            auto& table = table_entry.second;  // get the table rows
+            auto& headers = table[0]; // header row
+            int cond_col_index ;
 
             // Find the index of the condition column
             for (int i = 0; i < headers.size(); ++i) {
@@ -388,39 +386,37 @@ void process_command_line(const string& line, const string& current_database) {
                 }
             }
 
-            if (cond_col_index == -1) {
-                cout << "Error: Condition column '" << condition_column << "' not found." << endl;
-                return;  // Exit if column is not found
-            }
+            for (int i = 1; i < table.size(); ++i) {  // skip header row
+                auto& row = table[i];  //access the row of table
+                bool should_delete = false; //used to check if our condition value is the same as or value inside our row 
 
-            int deleted_rows = 0;  // Track deleted rows
-            auto it = table.begin() + 1; // Skip header row
-
-            while (it != table.end()) {
-                bool should_delete = false;
-                
-                // Check if the condition matches (string or int comparison)
-                if (holds_alternative<string>((*it)[cond_col_index])){ 
-                    should_delete = get<string>((*it)[cond_col_index]) == condition_value;
-                } else if (holds_alternative<int>((*it)[cond_col_index])) {
-                    try {
-                        int cond_value_as_int = stoi(condition_value); // Convert to int
-                        should_delete = get<int>((*it)[cond_col_index]) == cond_value_as_int;
-                    } catch (const invalid_argument&) {
-                        cout << "Error: Invalid argument for condition value." << endl;
-                        return;
-                    }
+                // check if its int or string
+                if (holds_alternative<string>(row[cond_col_index])) {
+                    //if the condition is the same as our value in our row it sets should_delete to true 
+                    //if condition is not met, do nothing
+                    if (get<string>(row[cond_col_index]) == condition_value){
+                        should_delete = true;
+                    };
+                    
+                } else if (holds_alternative<int>(row[cond_col_index])) {
+                    //same as the first if, but change int to str for comparison
+                    int cond_value_as_int = stoi(condition_value); // Convert to int
+                    if (get<int>(row[cond_col_index]) == cond_value_as_int){
+                        should_delete = true;
+                    };
                 }
 
-                // Delete row if condition is met
+                // delete row if condition is met
                 if (should_delete) {
-                    it = table.erase(it);
-                    ++deleted_rows;
-                } else {
-                    ++it;  // Move to next row if no deletion
+                    //table.begin() is indexed at 0
+                    // + i here means we want to delete row at 0 + i.
+                    //Example, i could be 3 which means we delete row 3
+                    table.erase(table.begin() + i);  // Delete the current row
                 }
             }
         }
+    }
+
     }
 }
 
