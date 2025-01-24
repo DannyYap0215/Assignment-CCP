@@ -42,7 +42,7 @@ const int MAX_COLUMN = 10;
 
 int main() {
     string current_directory = filesystem::current_path().string();  // Get current directory to current folder
-    string filename = "fileInput3.mdb"; //choose a input file to be inserted
+    string filename = "fileInput2.mdb"; //choose a input file to be inserted
 
     string input_filename = filesystem::current_path().string() + "/Database/" + filename; //get directory to input file
     read_file(input_filename); // insert directory of input file to read_file function
@@ -139,8 +139,8 @@ void process_command_line(const string& line, const string& current_database) {
     regex databases_command("(DATABASES;)"); // THAM MEI TING
     regex create_command("(CREATE TABLE)(.*)"); // YAP CHI YI
     regex insert_command("(INSERT INTO)(.*)"); // TAN YONG XIN
-    regex update_command(R"(UPDATE\s+(\w+)\s+SET\s+(\w+)\s*\=s*'?(.*?)'?\s+WHERE\s+(\w+)\s*=\s*'?(.*?)'?\s*;)"); // THAM MEI TING
-    regex delete_command("(DELETE)(.*)"); // TAN YONG XIN
+    regex update_command(R"(UPDATE\s+(\w+)\s+SET\s+(\w+)\s*=\s*'?(.*?)'?\s+WHERE\s+(\w+)\s*=\s*'?(.*?)'?\s*;)"); // THAM MEI TING
+    regex delete_command(R"(DELETE\s+FROM\s+(\w+)\s+WHERE\s+(\w+)\s*=\s*'?(.*?)'?\s*;)"); // TAN YONG XIN
     regex select_count_command(R"(SELECT\s+COUNT\(\*\)\s+FROM\s+(\w+);)"); // THAM MEI TING
     regex tables_command("(TABLES;)"); // YAP CHI YI
     regex select_all_from_command(R"(SELECT\s+\*\s+FROM\s+(\w+);)"); // YAP CHI YI
@@ -360,6 +360,64 @@ void process_command_line(const string& line, const string& current_database) {
                         // Insert the row directly into the table's rows
                         table_rows.push_back(row_data);
                     }
+                }
+            }
+        }
+    }
+
+     if (regex_search(line, m, delete_command)) {
+        string table_name = m[1].str();
+        string condition_column = m[2].str();
+        string condition_value = m[3].str();
+
+        auto table_it = find_if(tables.begin(), tables.end(), [&](const auto& t){
+            return t.first == table_name;
+        });
+
+        if (table_it != tables.end()) {
+            auto& table = table_it->second;
+            auto& headers = table[0];
+            int cond_col_index = -1;
+
+            // Find the index of the condition column
+            for (int i = 0; i < headers.size(); ++i) {
+                if (holds_alternative<string>(headers[i]) &&
+                    get<string>(headers[i]) == condition_column) {
+                    cond_col_index = i;
+                    break;
+                }
+            }
+
+            if (cond_col_index == -1) {
+                cout << "Error: Condition column '" << condition_column << "' not found." << endl;
+                return;  // Exit if column is not found
+            }
+
+            int deleted_rows = 0;  // Track deleted rows
+            auto it = table.begin() + 1; // Skip header row
+
+            while (it != table.end()) {
+                bool should_delete = false;
+                
+                // Check if the condition matches (string or int comparison)
+                if (holds_alternative<string>((*it)[cond_col_index])){ 
+                    should_delete = get<string>((*it)[cond_col_index]) == condition_value;
+                } else if (holds_alternative<int>((*it)[cond_col_index])) {
+                    try {
+                        int cond_value_as_int = stoi(condition_value); // Convert to int
+                        should_delete = get<int>((*it)[cond_col_index]) == cond_value_as_int;
+                    } catch (const invalid_argument&) {
+                        cout << "Error: Invalid argument for condition value." << endl;
+                        return;
+                    }
+                }
+
+                // Delete row if condition is met
+                if (should_delete) {
+                    it = table.erase(it);
+                    ++deleted_rows;
+                } else {
+                    ++it;  // Move to next row if no deletion
                 }
             }
         }
