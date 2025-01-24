@@ -323,45 +323,38 @@ void process_command_line(const string& line, const string& current_database) {
 
 
     if (regex_search(line, m, insert_command)) {
-    regex table_name_regex(R"(INSERT INTO (\w+))");  // Regex to capture the table name and access the specifc table data
+    regex table_name_regex(R"(INSERT INTO (\w+))");  // Capture the table name
     smatch table_name_match; 
 
         if (regex_search(line, table_name_match, table_name_regex)) {
-            string table_name = table_name_match[1].str(); // table_name_match[1].str() refer to "customers"; if table_name_match[0].str() then it refers to "INSERT INTO customers"
+            string table_name = table_name_match[1].str(); // Extract table name, e.g., "customers"
             auto table_iter = find_if(tables.begin(), tables.end(), 
                                     [&table_name](const pair<string, vector<vector<variant<int, string>>>>& table) {
                                         return table.first == table_name;
                                     });
 
             if (table_iter != tables.end()) {
-                auto& table_rows = table_iter->second;  // Access rows of the correct table
+                auto& table_rows = table_iter->second;  // Access rows of the specific table
 
-                // Extract the part after 'VALUES' using regex
-                regex values_regex(R"(VALUES\s+\(([^)]+)\))");  // Matches the values after 'VALUES ( ... )'
+                regex values_regex(R"(VALUES\s+\(([^)]+)\))");  // Match values inside parentheses after 'VALUES'
                 smatch values_match;
 
                 if (regex_search(line, values_match, values_regex)) {
-                    string values_str = values_match[1].str();  // Get the matched values string
-
-                    // Split the values by commas and trim extra spaces
+                    string values_str = values_match[1].str();  // Extract the values string
                     stringstream ss(values_str);
                     string value;
 
-                    // add values to the table's rows
-                    vector<variant<int, string>> row_data;  // Vector to store a single row of data
+                    vector<variant<int, string>> row_data;  // Store one row of data
                     while (getline(ss, value, ',')) {
-                        // Check if the value contains a space to decide if it's a string
+                        // Check if the value is a string or integer
                         if (value.find(" ") != string::npos || value.front() == '\'' || value.back() == '\'') {
-                            // for string value (may contain spaces or be wrapped in quotes)
-                            row_data.push_back(value.substr(1, value.size() - 2));  // Remove quotes from string , as 1 here is "
+                            row_data.push_back(value.substr(1, value.size() - 2));  // Remove quotes from string
                         } else {
-                            // for int value
-                            row_data.push_back(stoi(value));  // Convert to int and add to the row
+                            row_data.push_back(stoi(value));  // Convert to int
                         }
                     }
 
-                    // Insert the row directly into the table's rows
-                    table_rows.push_back(row_data);
+                    table_rows.push_back(row_data);  // Add the new row to the table
                 }
             }
         }
@@ -381,54 +374,47 @@ void process_command_line(const string& line, const string& current_database) {
             auto& headers = table[0];
             int cond_col_index = -1;
 
-            // Find the column index for the condition column
+            // Find the index of the condition column
             for (int i = 0; i < headers.size(); ++i) {
-                if (get<string>(headers[i]) == condition_column) {
+                if (holds_alternative<string>(headers[i]) &&
+                    get<string>(headers[i]) == condition_column) {
                     cond_col_index = i;
                     break;
                 }
             }
 
-            if (cond_col_index != -1) {
+            if (cond_col_index == -1) {
                 cout << "Error: Condition column '" << condition_column << "' not found." << endl;
-                return;  // Column not found
+                return;  // Exit if column is not found
             }
 
-            int deleted_rows = 0;  // To track the number of deleted rows
+            int deleted_rows = 0;  // Track deleted rows
+            auto it = table.begin() + 1; // Skip header row
 
-            // Loop through the rows and delete rows matching the condition
-            auto it = table.begin() + 1; // Skip the header row
             while (it != table.end()) {
                 bool should_delete = false;
-                if (std::holds_alternative<string>((*it)[cond_col_index])){ 
-                    should_delete = std::get<string>((*it)[cond_col_index]) == condition_value;
-                } else if (std::holds_alternative<int>((*it)[cond_col_index])) {
+                
+                // Check if the condition matches (string or int comparison)
+                if (holds_alternative<string>((*it)[cond_col_index])){ 
+                    should_delete = get<string>((*it)[cond_col_index]) == condition_value;
+                } else if (holds_alternative<int>((*it)[cond_col_index])) {
                     try {
-                        int cond_value_as_int = std::stoi(condition_value); // Convert to int
-                        should_delete = std::get<int>((*it)[cond_col_index]) == cond_value_as_int;
-                    } catch (const std::invalid_argument&) {
+                        int cond_value_as_int = stoi(condition_value); // Convert to int
+                        should_delete = get<int>((*it)[cond_col_index]) == cond_value_as_int;
+                    } catch (const invalid_argument&) {
                         cout << "Error: Invalid argument for condition value." << endl;
                         return;
                     }
                 }
 
-                // If the condition matches, delete the row
+                // Delete row if condition is met
                 if (should_delete) {
                     it = table.erase(it);
                     ++deleted_rows;
                 } else {
-                    ++it;  // Only move to the next row if no deletion
+                    ++it;  // Move to next row if no deletion
                 }
             }
-
-            // Print a message about the number of rows deleted
-            if (deleted_rows > 0) {
-                cout << "Deleted " << deleted_rows << " row(s) from table " << table_name << "." << endl;
-            } else {
-                cout << "No rows matched the condition to delete." << endl;
-            }
-        } else {
-            cout << "Error: Table " << table_name << " not found." << endl;
         }
     }
 }
