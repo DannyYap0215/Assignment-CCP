@@ -42,7 +42,7 @@ const int MAX_COLUMN = 10;
 
 int main() {
     string current_directory = filesystem::current_path().string();  // Get current directory to current folder
-    string filename = "fileInput3.mdb"; //choose a input file to be inserted
+    string filename = "fileInput2.mdb"; //choose a input file to be inserted
 
     string input_filename = filesystem::current_path().string() + "/Database/" + filename; //get directory to input file
     read_file(input_filename); // insert directory of input file to read_file function
@@ -427,8 +427,8 @@ void split(const string& s, char delim, vector<string>& splitted) {
 
     // If delimiters is found 
     while (delimPos != string::npos) {
-        string tok = s.substr(startPos, delimPos - startPos);
-        splitted.push_back(tok);
+        string s_without_delim = s.substr(startPos, delimPos - startPos);
+        splitted.push_back(s_without_delim);
 
         // move delimPos up by 1 
         delimPos++;
@@ -441,8 +441,8 @@ void split(const string& s, char delim, vector<string>& splitted) {
 
         //last values with no delimiter = "," found
         if (delimPos == string::npos) {
-            string tok = s.substr(startPos, delimPos - startPos);
-            splitted.push_back(tok);
+            string s_without_delim = s.substr(startPos, delimPos - startPos);
+            splitted.push_back(s_without_delim);
         }
     }
 }
