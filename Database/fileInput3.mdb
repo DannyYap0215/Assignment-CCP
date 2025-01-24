@@ -12,21 +12,21 @@ student_email TEXT
 );
 
 INSERT INTO
-customer(customer_id,customer_name,customer_city,customer_state,customer_country,custom er_phone,customer_email) VALUES (1,'name1','city1','state1','country1','phone1','email1'); 
+student(student_ID,student_name,student_city,student_state,student_country,student_phone,student_email) VALUES (1,'YAP CHI YI','SEREMBAN','NEGERI SEMBILAN','MALAYSIA','0182694514','YAP.CHI.YI@student.mmu.edu.my'); 
 INSERT INTO
-customer(customer_id,customer_name,customer_city,customer_state,customer_country,custom er_phone,customer_email) VALUES (2,'name2','city2','state2','country2','phone2','email2'); 
+student(student_ID,student_name,student_city,student_state,student_country,student_phone,student_email) VALUES (2,'THAM MEI TING','SEREMBAN','NEGERI SEMBILAN','MALAYSIA','0173268006','THAM.MEI.TING@student.mmu.edu.my'); 
 INSERT INTO
-customer(customer_id,customer_name,customer_city,customer_state,customer_country,customer_phone,customer_email) VALUES (3,'name3','city3','state3','country3','phone3','email3'); 
+student(student_ID,student_name,student_city,student_state,student_country,student_phone,student_email) VALUES (3,'TAN YONG XIN','NILAI','NEGERI SEMBILAN','MALAYSIA','0126556505','TAN.YONG.XIN@student.edu.mmu.my'); 
 INSERT INTO
-customer(customer_id,customer_name,customer_city,customer_state,customer_country,custom er_phone,customer_email) VALUES (4,'name4','city4','state4','country4','phone4','email4');
-SELECT * FROM customer;
+student(student_ID,student_name,student_city,student_state,student_country,student_phone,student_email) VALUES (4,'BOB','NEW YORK CITY','NEW YORK','USA','7788772212','bob7728@gmail.com');
+SELECT * FROM student;
 
 TABLES;
 
-UPDATE customer SET customer_email='email333' WHERE customer_id=3;
-SELECT * FROM customer;
+UPDATE student SET student_email='bobreal123@gmail.com' WHERE student_ID=4;
+SELECT * FROM student;
 
-DELETE FROM customer WHERE customer_id=4;
-SELECT * FROM customer;
+DELETE FROM student WHERE student_ID=4;
+SELECT * FROM student;
 
-SELECT COUNT(*) FROM customer;
+SELECT COUNT(*) FROM student;

@@ -4,13 +4,13 @@
 // Lecture Class: TC1L
 // Tutorial Class: TT1L
 // Trimester: 2430
-// Member_1: 242UC244KX | YAP CHI YI | YAP.CHI.YI@student.mmu.edu.my | 018-2694514
+// Member_1: 242UC244KX | YAP CHI YI | YAP.CHI.YI@student.mmu.edu.my | 0182694514
 // Member_2: 242UC244S6 | THAM MEI TING | THAM.MEI.TING@student.mmu.edu.my | 0173268006
 // Member_3: 242UC244PF | TAN YONG XIN | TAN.YONG.XIN@student.edu.mmu.my | 0126556505
 // Member_4: ID | NAME | EMAIL | PHONE
 // *******************
 // Task Distribution
-// Member_1: function: read_file, get_output_filename, write_to_file, process_command_line | Commands function: CREATE TABLE, TABLES, SELECT * FROM
+// Member_1: function: read_file, get_output_filename, write_to_file, process_command_line, split | Commands function: CREATE TABLE, TABLES, SELECT * FROM
 // Member_2: Command function: UPDATE, SELECT COUNT， DATABASE
 // Member_3: Command function: INSERT INTO, DELETE
 // Member_4:
@@ -32,6 +32,8 @@ void read_file(const string& filename);                                         
 void write_to_file(const vector<string>& lines, const string& output_filename); // functions to write output to output file
 string get_output_filename(const string& filename);                             // function to get the name for creating output file
 void process_command_line(const string& line, const string& current_database);  // check for command line
+void split(const string& s, char delim, vector<string>& splitted);                // functions to split strings with ","
+
 
 vector<string> processed_command_line_outputs;                     // a vector of strings containing processed lines after reading in files
 vector<pair<string, vector<vector<variant<int, string>>>>> tables; // a vector containing {string which is tablename,{2d vector data which could contain either int or string}}
@@ -40,7 +42,7 @@ const int MAX_COLUMN = 10;
 
 int main() {
     string current_directory = filesystem::current_path().string();  // Get current directory to current folder
-    string filename = "fileInput2.mdb"; //choose a input file to be inserted
+    string filename = "fileInput3.mdb"; //choose a input file to be inserted
 
     string input_filename = filesystem::current_path().string() + "/Database/" + filename; //get directory to input file
     read_file(input_filename); // insert directory of input file to read_file function
@@ -137,11 +139,16 @@ void process_command_line(const string& line, const string& current_database) {
     regex databases_command("(DATABASES;)"); // THAM MEI TING
     regex create_command("(CREATE TABLE)(.*)"); // YAP CHI YI
     regex insert_command("(INSERT INTO)(.*)"); // TAN YONG XIN
-    regex update_command(R"(UPDATE\s+(\w+)\s+SET\s+(\w+)\s*=\s*'?(.*?)'?\s+WHERE\s+(\w+)\s*=\s*'?(.*?)'?\s*;)"); // THAM MEI TING
+    regex update_command(R"(UPDATE\s+(\w+)\s+SET\s+(\w+)\s*\=s*'?(.*?)'?\s+WHERE\s+(\w+)\s*=\s*'?(.*?)'?\s*;)"); // THAM MEI TING
     regex delete_command("(DELETE)(.*)"); // TAN YONG XIN
     regex select_count_command(R"(SELECT\s+COUNT\(\*\)\s+FROM\s+(\w+);)"); // THAM MEI TING
     regex tables_command("(TABLES;)"); // YAP CHI YI
     regex select_all_from_command(R"(SELECT\s+\*\s+FROM\s+(\w+);)"); // YAP CHI YI
+    //basic pattern used :
+    // * means zero or more
+    // + is one or more
+    // need to use R as we have \ here
+    // ? is optional
 
     string table_name;
 
@@ -155,28 +162,16 @@ void process_command_line(const string& line, const string& current_database) {
         string condition_column = m[4].str();  // extract the column used in WHERE condiion
         string condition_value = m[5].str();   // extract the value used in WHERE condition
 
-        // find table in table vector
-        auto table_it = find_if(tables.begin(), tables.end(), [&](const auto& t){
-            return t.first == table_name; // check if match with table name
-        });
-
-        if (table_it == tables.end()){ // table not found, exit function
-            return;
-        }
-
-        auto& table = table_it->second; // reference the found table
+        // find table in tables vector
+        auto& table = tables[0].second;
         auto& headers = table[0]; // get table headers (column names)
-        int set_col_index = -1; // index of column to be updated
-        int cond_col_index = -1; // index of column used in WHERE condition
+        int set_col_index ; // index of column to be updated
+        int cond_col_index ; // index of column used in WHERE condition
 
         // find i for set column and condition column
         for (int i = 0; i < headers.size(); ++i){
             if (get<string>(headers[i]) == set_column) set_col_index = i; // matches with column to be updated
             if (get<string>(headers[i]) == condition_column) cond_col_index = i; // matches with condition column
-        }
-
-        if (set_col_index == -1 || cond_col_index == -1){
-            return; // column index not found, exit function
         }
 
         int updated_rows = 0; // counter of row updates
@@ -221,9 +216,7 @@ void process_command_line(const string& line, const string& current_database) {
             //and the - 1 excludes the closing parenthesis
             string columns_str = line.substr(line.find('(') + 1, line.find(')') - line.find('(') - 1);
             regex column_regex(R"((\w+)\s+(\w+))");
-            //(\w+): Matches one or more word characters (the column name).
-            //\s+: Matches one or more spaces.
-            //(\w+): Matches one or more word characters (the data type, either INT or TEXT).
+            
             // column_begin is the first match found, column_end is the last match found
             auto column_begin = sregex_iterator(columns_str.begin(), columns_str.end(), column_regex); //column_regex is the pattern needed to match
             auto column_end = sregex_iterator();
@@ -236,7 +229,7 @@ void process_command_line(const string& line, const string& current_database) {
             }
 
             // Add the table to the 'tables' vector
-            tables.push_back({table_name, {headers}}); //add into the vector which has the same table name, and add
+            tables.push_back({table_name, {headers}}); //add the table_name and headers into tables
         }
     }
 
@@ -335,43 +328,67 @@ void process_command_line(const string& line, const string& current_database) {
 
         if (regex_search(line, table_name_match, table_name_regex)) {
             string table_name = table_name_match[1].str(); // table_name_match[1].str() refer to "customers"; if table_name_match[0].str() then it refers to "INSERT INTO customers"
-            auto table_iter = find_if(tables.begin(), tables.end(),
-                                    [&table_name](const pair<string, vector<vector<variant<int, string>>>>& table) {
-                                        return table.first == table_name;
-                                    });
+        
+            for (const auto& table : tables) { //iterate through table in tables
+                if ( table_name == table.first) { //check if table_name for inserting is same as in data
+                    auto& table_rows = tables[0].second;  // access the row ** using [0] as this program does not implement many tables yet ** may do in future -21/1/2025
 
-            if (table_iter != tables.end()) {
-                auto& table_rows = table_iter->second;  // Access rows of the correct table
+                    // extract part after 'VALUES' using regex
+                    regex values_regex(R"(VALUES\s+\(([^)]+)\))");  
+                    smatch values_match;
 
-                // Extract the part after 'VALUES' using regex
-                regex values_regex(R"(VALUES\s+\(([^)]+)\))");  // Matches the values after 'VALUES ( ... )'
-                smatch values_match;
+                    if (regex_search(line, values_match, values_regex)) {
+                        string values_str = values_match[1].str();  // Get the matched values string
 
-                if (regex_search(line, values_match, values_regex)) {
-                    string values_str = values_match[1].str();  // Get the matched values string
+                        vector<string> values_tokens;
+                        // instead of stringstream we now changed to using split function - 23/1/2025
+                        split(values_str, ',', values_tokens); // instead of stringstream we now changed to using split function - 23/1/2025
 
-                    // Split the values by commas and trim extra spaces
-                    stringstream ss(values_str);
-                    string value;
-
-                    // add values to the table's rows
-                    vector<variant<int, string>> row_data;  // Vector to store a single row of data
-                    while (getline(ss, value, ',')) {
-                        // Check if the value contains a space to decide if it's a string
-                        if (value.find(" ") != string::npos || value.front() == '\'' || value.back() == '\'') {
-                            // for string value (may contain spaces or be wrapped in quotes)
-                            row_data.push_back(value.substr(1, value.size() - 2));  // Remove quotes from string , as 1 here is "
-                        } else {
-                            // for int value
-                            row_data.push_back(stoi(value));  // Convert to int and add to the row
+                        // add values to the table's rows
+                        vector<variant<int, string>> row_data;  // row_data to store all data 
+                        for (const string& value : values_tokens) {
+                            // Check if the value is a string (contains spaces or is enclosed in quotes)
+                            if (value.find(" ") != string::npos || value.front() == '\'' || value.back() == '\'') {
+                                // Remove quotes from string value and push_back into row_data
+                                row_data.push_back(value.substr(1, value.size() - 2));  // Remove quotes
+                            } else {
+                                // Convert to int and add to the row
+                                row_data.push_back(stoi(value));  // Convert to int and add to the row
+                            }
                         }
-                    }
 
-                    // Insert the row directly into the table's rows
-                    table_rows.push_back(row_data);
+                        // Insert the row directly into the table's rows
+                        table_rows.push_back(row_data);
+                    }
                 }
             }
         }
     }
+}
 
+// functions to split strings with "," 
+void split(const string& s, char delim, vector<string>& splitted) {
+    int startPos = 0;  // Starting position 
+    int delimPos = s.find(delim); // pos of ","
+
+    // If delimiters is found 
+    while (delimPos != string::npos) {
+        string tok = s.substr(startPos, delimPos - startPos);
+        splitted.push_back(tok);
+
+        // move delimPos up by 1 
+        delimPos++;
+
+        // starting position is now delimPos + 1 as delimPos++;
+        startPos = delimPos;
+
+        // starts at delimPos which is the "," that we found and from that proceed to find the next ","
+        delimPos = s.find(delim, delimPos); 
+
+        //last values with no delimiter = "," found
+        if (delimPos == string::npos) {
+            string tok = s.substr(startPos, delimPos - startPos);
+            splitted.push_back(tok);
+        }
+    }
 }
