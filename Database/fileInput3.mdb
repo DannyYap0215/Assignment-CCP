@@ -26,7 +26,7 @@ TABLES;
 UPDATE student SET student_email='bobreal123@gmail.com' WHERE student_ID=4;
 SELECT * FROM student;
 
-DELETE FROM student WHERE student_ID=4;
+DELETE FROM student WHERE student_name='BOB';
 SELECT * FROM student;
 
 SELECT COUNT(*) FROM student;

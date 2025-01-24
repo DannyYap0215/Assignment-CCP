@@ -42,7 +42,7 @@ const int MAX_COLUMN = 10;
 
 int main() {
     string current_directory = filesystem::current_path().string();  // Get current directory to current folder
-    string filename = "fileInput2.mdb"; //choose a input file to be inserted
+    string filename = "fileInput3.mdb"; //choose a input file to be inserted
 
     string input_filename = filesystem::current_path().string() + "/Database/" + filename; //get directory to input file
     read_file(input_filename); // insert directory of input file to read_file function
